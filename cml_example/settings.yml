@@ -1,0 +1,123 @@
+setup_2023_08:
+
+    # time
+    year: '2019'
+    months: ['06', '07', '08']
+    start_day: '01'
+    start_hour: '00'
+    start_minute: '50'
+    n_tsteps: 2208
+    freq: 'H'
+    
+    # selected cases
+    t1: '2019-06-11T01:50'
+    t2: '2019-07-28T13:50'
+    t3: '2019-08-18T12:50'
+    tLabelsFull: ['Jun 11, 01:50', 'Jul 28, 13:50', 'Aug 18, 12:50']
+
+    # spatial extent with regard to RADOLAN (900,900) grid
+    box: [0, 200, 900, 900]
+    
+    # minimum percentage that is required to calculate fields
+    wet_min: 0.05
+
+    # values below this threshold count as dry
+    wet_thld: 0.01
+
+    # maximum percentage of missing values
+    nan_max: 0.2
+
+    # RM options
+    nfields: 20
+
+    # Kriging options
+    vario_model: 'exponential'
+    nclosest: 10
+    nlags: 200
+
+    # raw data sources
+    cml_data_raw: '/data/std_gapfill.proc_hessgraf.raw2019.002_%s_%s.nc'
+    rg_data_raw: '/data/1min_dwd_gauges_2019.nc' 
+    rad_data: '/data/RADOLAN_RW_2019.nc'
+    border_data: '/data/src_radolan_viewer_shape_germany.csv'
+    
+    # folders
+    datafolder: '/data/'
+    rmfolder: 'rm_reconstructions/single_timesteps/'
+    krifolder: 'kriging/single_timesteps/'
+    obsfolder: 'observations/new/'
+    
+    # processed data sources
+    rm_data: 'rm_reconstructions/months/march_22/parameters_20_2019.nc'
+    kri_data: 'kriging/march_22/kriging_2019.nc'
+    
+    # for distance mask (distance in km and union or inter for union or intersection of rg- and cml-derived masks)
+    mask_type: 'German_border'
+    
+    # generate plots?
+    plot_maps: True
+    plot_statistics: True
+
+
+
+setup_2022_03:
+
+    # time
+    year: '2019'
+    months: ['06', '07', '08']
+    start_day: '01'
+    start_hour: '00'
+    start_minute: '50'
+    n_tsteps: 2208
+    freq: 'H'
+    
+    # selected cases
+    t1: '2019-06-11T01:50'
+    t2: '2019-07-28T13:50'
+    t3: '2019-08-18T12:50'
+    tLabelsFull: ['Jun 11, 01:50', 'Jul 28, 13:50', 'Aug 18, 12:50']
+
+    # spatial extent with regard to RADOLAN (900,900) grid
+    box: [0, 200, 900, 900]
+    
+    # minimum percentage that is required to calculate fields
+    wet_min: 0.05
+
+    # values below this threshold count as dry
+    wet_thld: 0.01
+
+    # maximum percentage of missing values
+    nan_max: 0.2
+
+    # RM options
+    nfields: 20
+
+    # Kriging options
+    vario_model: 'exponential'
+    nclosest: 10
+    nlags: 200
+
+    # raw data sources
+    cml_data_raw: '/data/std_gapfill.proc_hessgraf.raw2019.002_%s_%s.nc'
+    rg_data_raw: '/data/1min_dwd_gauges_2019.nc' 
+    rad_data: '/data/RADOLAN_RW_2019.nc'
+    border_data: '/data/src_radolan_viewer_shape_germany.csv'
+    
+    # folders
+    datafolder: '/data/'
+    rmfolder: 'rm_reconstructions/single_timesteps/'
+    krifolder: 'kriging/single_timesteps/'
+    obsfolder: 'observations/new/'
+    
+    # processed data sources
+    rm_data: 'rm_reconstructions/months/march_22/parameters_20_2019.nc'
+    kri_data: 'kriging/march_22/kriging_2019.nc'
+    
+    # for distance mask (distance in km and union or inter for union or intersection of rg- and cml-derived masks)
+    mask_type: 'German_border'
+    
+    # generate plots?
+    plot_maps: True
+    plot_statistics: True
+    
+
