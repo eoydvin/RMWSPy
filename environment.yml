@@ -1,0 +1,21 @@
+name: geospatial
+channels:
+  - conda-forge
+dependencies:
+ - numpy
+ - scipy<1.9
+ - pandas>=0.22
+ - matplotlib
+ - numba
+ - h5py
+ - xarray
+ - sparse
+ - shapely
+ - pyproj
+ - tqdm
+ - future
+ - jupyterlab
+ - notebook
+ - bottleneck
+ - dask
+ - dask-jobqueue
