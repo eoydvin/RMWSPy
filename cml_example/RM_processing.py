@@ -7,6 +7,9 @@ import scipy.spatial as sp
 import scipy.interpolate as interpolate
 from cml import *
 import gcopula_sparaest as sparest
+import gcopula_sparaest_block as sparaest_block
+
+
 import bresenhamline
 from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV, LeaveOneOut
@@ -14,6 +17,10 @@ import datetime
 from tqdm import tqdm
 import yaml
 import psutil
+
+# import copied pycomlink modules for fast processing of cml-grid intersection
+from grid_intersection import get_grid_time_series_at_intersections
+from grid_intersection import calc_sparse_intersect_weights_for_several_cmls
 
 # import dask
 # from dask.distributed import Client
@@ -414,12 +421,9 @@ def calculate_marginal(prec, cml_prec=None):
         hcmlp = hcmlp[hcmlp > prec.max()]
         prec = np.concatenate((prec, hcmlp))
 
-    print("max prec: ", np.max(prec) / 10)
-
     # fit a non-parametric marginal distribution using KDE with Gaussian kernel
     # this assumes that there are wet observations
-    p0 = 1.0 - np.float(prec[prec > 0].shape[0]) / prec.shape[0]
-    print("p0 = ", p0)
+    p0 = 1.0 - float(prec[prec > 0].shape[0]) / prec.shape[0]
 
     if len(prec[prec > 0]) < 5:
         cv = 2
@@ -457,8 +461,89 @@ def calculate_marginal(prec, cml_prec=None):
 
     return marginal
 
-
 def calculate_copula(
+    yx, prec, outputfile=None, covmods=["Mat", "Exp", "Sph"], ntries=6, nugget=0.05, mode = None, maxrange = 100, minrange = 1, p0 = None
+):
+    """
+    Wrapper function for copula / spatial dependence calculation
+    """
+
+    t0_copula = datetime.datetime.now()
+
+    # transform to rank values
+    # erlend: this makes the distribution flat, like in the KDE, thus it can 
+    # be transformed to a normal space using the copula ( anormal copula is
+    # applied later )
+    u = (st.rankdata(prec) - 0.5) / prec.shape[0]
+    
+    if p0 is not None:
+        ind = u > p0
+        u = u[ind]
+        yx = yx[ind]
+    
+    # set subset size
+    if len(prec[prec > 0]) < 5:
+        n_in_subset = 2
+    else:
+        n_in_subset = 5
+
+    # calculate copula models
+    if mode is not None:
+        cmods = sparaest_block.paraest_multiple_tries(
+            np.copy(yx),
+            u,
+            ntries=[ntries, ntries],
+            n_in_subset=10,
+            # number of values in subsets
+            neighbourhood="random", # the dereg method needs to capture the variance of the field 
+            # subset search algorithm
+            covmods=covmods,  # covariance functions
+            outputfile=outputfile,
+            maxrange = maxrange,
+            minrange = minrange,
+        )  # store all fitted models in an output file
+
+    else:
+    
+        cmods = sparest.paraest_multiple_tries(
+            np.copy(yx),
+            u,
+            ntries=[ntries, ntries],
+            n_in_subset=n_in_subset,
+            # number of values in subsets
+            neighbourhood="nearest",
+            # subset search algorithm
+            covmods=covmods,  # covariance functions
+            outputfile=outputfile,
+        )  # store all fitted models in an output file
+    
+    # take the copula model with the highest likelihood
+    # reconstruct from parameter array
+    likelihood = -666
+    for model in range(len(cmods)):
+        for tries in range(ntries):
+            if cmods[model][tries][1] * -1.0 > likelihood:
+                likelihood = cmods[model][tries][1] * -1.0
+                #                 cmod = "0.05 Nug(0.0) + 0.95 %s(%1.3f)" % (
+                #                     covmods[model], cmods[model][tries][0][0])
+                
+                cmod = "%1.3f Nug(0.0) + %1.3f %s(%1.3f)" % (
+                    nugget,
+                    1 - nugget,
+                    covmods[model],
+                    cmods[model][tries][0][0],
+                )
+                if covmods[model] == "Mat":
+                    cmod += "^%1.3f" % (cmods[model][tries][0][1])
+
+    t1_copula = datetime.datetime.now()
+    t_copula = t1_copula - t0_copula
+    t_copula = t_copula.total_seconds()
+
+    return cmod
+
+
+def calculate_copula_old(
     yx, prec, outputfile=None, covmods=["Mat", "Exp", "Sph"], ntries=6, nugget=0.05
 ):
     """
@@ -587,3 +672,78 @@ def get_copula_params(ds):
             cov_mod.append(name_cop[:3])
 
     return cov_rng, cov_mod
+
+def create_blocks_from_lines(yx_ends, disc):      
+    # yx_ends: [block_id, [ya, yb, xa, xb]]          
+    xpos = np.zeros([yx_ends.shape[0], disc+1])
+    ypos = np.zeros([yx_ends.shape[0], disc+1])
+    
+    for block_i in range(yx_ends.shape[0]):   
+        x_a = yx_ends[block_i, 2]
+        x_b = yx_ends[block_i, 3]
+        y_a = yx_ends[block_i, 0]
+        y_b = yx_ends[block_i, 1]
+        # for all dicretization steps in link estimate its place on the grid
+        for i in range(disc+1): # For all disc steps
+            xpos[block_i, i] = x_a + (i/disc)*(x_b - x_a) 
+            ypos[block_i, i] = y_a + (i/disc)*(y_b - y_a) 
+    return xpos, ypos
+            
+def generate_cmls_grid_intersects(x_ind_mid, y_ind_mid, lengths, fields):
+    """
+    Uses functions from pycomlink to compute weigthed 
+    fields must have shape [time, y, x]
+    """
+    # Make function that draws cmls and samples automatically:) 
+    n_cmls = x_ind_mid.size
+    x_grid, y_grid = np.meshgrid(
+        np.arange(fields.shape[2]), 
+        np.arange(fields.shape[1])
+        )
+    cml_ids = ['CML_' + str(i) for i in range(n_cmls)]
+    
+    # draw a random direction for all links, calculate a and b indices
+    direction = np.random.uniform(0, 2*np.pi, size = n_cmls)
+    x_ind_a = x_ind_mid + (0.5*lengths*np.cos(direction))
+    x_ind_b = x_ind_mid - (0.5*lengths*np.cos(direction))
+    y_ind_a = y_ind_mid + (0.5*lengths*np.sin(direction))
+    y_ind_b = y_ind_mid - (0.5*lengths*np.sin(direction))
+    
+    # calculate intersection weigths
+    intersect_weights = calc_sparse_intersect_weights_for_several_cmls(
+        x1_line = x_ind_a,
+        y1_line = y_ind_a,
+        x2_line = x_ind_b,
+        y2_line = y_ind_b,
+        cml_id = cml_ids,
+        x_grid = x_grid,
+        y_grid = y_grid,
+        grid_point_location='center',
+    )
+    
+    
+    # sample rainfall from grid
+    radar_along_cmls = get_grid_time_series_at_intersections(
+        grid_data=fields, # exclude endpoint
+        intersect_weights=intersect_weights,
+    )
+    
+    
+    # construct datarray
+    ds_cml = xr.DataArray(  
+        dims=["cml_id", 'time'],
+        data = radar_along_cmls.values.T, 
+        coords=dict(
+            cml_id = cml_ids,
+            time = np.arange(fields.shape[0]), #
+            length = ('cml_id', np.sqrt((x_ind_a - x_ind_b)**2 + (y_ind_a - y_ind_b)**2)),
+            x_mid = ('cml_id', x_ind_mid),
+            y_mid = ('cml_id', y_ind_mid),
+            y_a = ('cml_id', y_ind_a),
+            x_a = ('cml_id', x_ind_a),
+            y_b = ('cml_id', y_ind_b),
+            x_b = ('cml_id', x_ind_b),
+        ),
+    )
+    
+    return ds_cml
