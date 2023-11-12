@@ -1,3 +1,6 @@
+# RMWSPy-Fork
+This is a forked verison of RMWSPy. Here we show how to estimate the spatial model using path averaged data. ./rmwspy/gcopula_sparaest_block.py (a modified version of existing ./rmwspy/gcopula_sparaest.py) implements the deconvolution algorithm and the optimization. 1_fully_synthetic.ipynb and 2_radar_and_cml_interpolation.ipynb shows how to run the code and generate the plots in the paper. 
+
 # RMWSPy
 Version 1.1
 
