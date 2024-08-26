@@ -152,7 +152,7 @@ class RMWS(object):
         else:
             raise Exception('Wrong method!')
 
-        print('\nGenerating random fields ...')
+        #print('\nGenerating random fields ...')
         t0_uncon = datetime.datetime.now()
 
         self.spsim = Specsim.spectral_random_field(domainsize=self.domainsize,
@@ -170,7 +170,7 @@ class RMWS(object):
         #             self.uncondFields[i] = self.spsim.simnew()
         
         t_uncon = (datetime.datetime.now() - t0_uncon).total_seconds()
-        print('...done in ', t_uncon, '\n')
+        #print('...done in ', t_uncon, '\n')
 
         self.n_inc_fac = int(
             np.max([5, (self.cp.shape[0] + self.le_cp.shape[0] + self.ge_cp.shape[0])]))
@@ -214,7 +214,7 @@ class RMWS(object):
             else:
                 simno_arr.append(simno)
 
-            print('---------------------\nRealization number: %i' % simno)
+            #print('---------------------\nRealization number: %i' % simno)
 
             # if inequalities are present -> replace them by equalities
             # using MCMC (Metropolis-Hastings Random Walk, MHRW_inequality)
@@ -244,7 +244,7 @@ class RMWS(object):
                 self.mhrw_arr[simno] = last_pdf
 
                 self.t_MHRW = (datetime.datetime.now() - t0_MHRW).total_seconds()
-                print('...done in ', self.t_MHRW, '\n')
+                #print('...done in ', self.t_MHRW, '\n')
 
             # no inequalities
             else:
@@ -264,7 +264,7 @@ class RMWS(object):
                 numberOfFields = 0
 
             else:
-                print('\nFinding weights for inner field...')
+                #print('\nFinding weights for inner field...')
                 t0_innerw = datetime.datetime.now()
 
                 weights, self.norm_inner, numberOfFields = self.find_low_norm_weights()
@@ -272,7 +272,7 @@ class RMWS(object):
                 t1_innerw = datetime.datetime.now()
                 self.t_innerw = t1_innerw - t0_innerw
                 self.t_innerw = self.t_innerw.total_seconds()
-                print('...done in ', self.t_innerw, '\n')
+                #print('...done in ', self.t_innerw, '\n')
 
                 self.tinner_arr[simno] = self.t_innerw
 
@@ -339,13 +339,13 @@ class RMWS(object):
                         }
                 args = Bunch(args)
 
-                print('\nCalculating final fields...')
+                #print('\nCalculating final fields...')
                 t0_final = datetime.datetime.now()
 
                 finalField, updatedargs, obj = self.getFinalField(self.circleopt, args)
 
                 t_final = (datetime.datetime.now() - t0_final).total_seconds()
-                print('...done in ', t_final, '\n')
+                #print('...done in ', t_final, '\n')
 
             self.innerFields.append(self.inner_field)
             self.finalFields.append(finalField)
@@ -353,7 +353,7 @@ class RMWS(object):
         self.innerFields = np.array(self.innerFields)
         self.finalFields = np.array(self.finalFields)
         self.final_obj = np.array(self.final_obj)
-        print('\n Simulation terminated!')
+        #print('\n Simulation terminated!')
 
     def random_index(self, inds, n):
         return inds[:n]
@@ -676,7 +676,7 @@ class RMWS(object):
             assert len(curobj) == 1, (
                 'Objective function needs to return ONE value only!')
 
-            print('\r', curobj, end='')
+            #print('\r', curobj, end='')
             sys.stdout.flush()
 
             if curobj < obj:
@@ -706,29 +706,29 @@ class RMWS(object):
                 self.objfin_arr[self.simno] = obj[0]
                 notoptimal = False
                 finalField = self.normalize_with_innerField(curhomogfield)
-                print('\n Defined minimum objective function value reached!')
-                logging.info(
-                    'Defined minimum objective function value reached after number of simulations: %i' % self.simno)
+                #print('\n Defined minimum objective function value reached!')
+                #logging.info(
+                #    'Defined minimum objective function value reached after number of simulations: %i' % self.simno)
 
             # check if we need too many iterations and stop after maxiter
             elif nlargs.counter == self.maxiter:
                 self.objfin_arr[self.simno] = obj[0]
                 notoptimal = False
                 finalField = self.normalize_with_innerField(curhomogfield)
-                print(
-                    '\n Number of max model runs exceeded! --> Take current best solution!')
-                logging.info(
-                    'Number of max model runs exceeded! --> Take current best solution after number of simulations: %i' % self.simno)
+                #print(
+                #    '\n Number of max model runs exceeded! --> Take current best solution!')
+                #logging.info(
+                #    'Number of max model runs exceeded! --> Take current best solution after number of simulations: %i' % self.simno)
 
             elif badcount >= self.maxbadcount:
                 self.objfin_arr[self.simno] = obj[0]
                 notoptimal = False
                 finalField = self.normalize_with_innerField(curhomogfield)
-                print(
-                    '\n Too small improvements in last %i consecutive iterations! --> Take current best solution!' % badcount)
-                logging.info(
-                    'Too small improvements in last %i consecutive iterations! --> Take current best solution after number of simulations: %i' % (
-                    badcount, self.simno))
+                #print(
+                #    '\n Too small improvements in last %i consecutive iterations! --> Take current best solution!' % badcount)
+                #logging.info(
+                #    'Too small improvements in last %i consecutive iterations! --> Take current best solution after number of simulations: %i' % (
+                #    badcount, self.simno))
 
         return finalField, args, obj
 

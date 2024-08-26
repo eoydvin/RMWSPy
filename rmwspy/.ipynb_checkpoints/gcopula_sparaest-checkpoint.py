@@ -24,7 +24,7 @@ def paraest_multiple_tries(
                 ntries=[6,6],               # [no. of tries with same subsets (diff starting parameters), no. of tries with different subsets]
                 n_in_subset=8,              # number of values in subset
                 neighbourhood='nearest',    # subset search algorithm
-                covmods=['exp'],
+                covmods=['Mat', 'Exp', 'Sph',] ,
                 outputfile=None,            # if valid path+fname string --> write output file
                 talk_to_me=True,
                 ):
@@ -119,7 +119,7 @@ def paraest_g(
                 n_in_subset=8,              # number of values in subset
                 neighbourhood='nearest',    # subset search algorithm
                 seed = None,               
-                covmods = ['exp'],    
+                covmods = ['Mat'],    
                 outputfile=None,            
                 talk_to_me=True,
                 ):
@@ -151,9 +151,11 @@ def paraest_g(
     p_bounds=[]   
     Rangebounds = [[(d0[np.where(d0>0)]).min()*2.,  d0.max()*2]]
     p_bounds += Rangebounds
-    c_bounds = [[0, 1]]
-    p_bounds += c_bounds
-    
+
+    if covmods == 'Mat':
+        Extrabounds = [[0.05, 50.0]]
+        p_bounds += Extrabounds
+  
     p_bounds = tuple(p_bounds)
 
     # random starting parameter set
@@ -165,7 +167,7 @@ def paraest_g(
         
     args = (d0,                 
             u0,                 
-            [covmods],
+            covmods,
             talk_to_me)
         
     # start optimization
@@ -193,30 +195,32 @@ def paraest_g(
             fout.write('%s \n'%(cov_models))
             fout.write('# ------------------------------------------------------------- #\n')
             fout.close()
+
     return out
 
 def reconstruct_parameters(p, covmods):
-
-    Range = p[0]
-    # currently only made for exp and nug+exp
-    if covmods == 'exp':
-        cov_model = '1.0 Exp(%1.12f)'%(Range)
-        
-    # requires form nug exp
-    elif covmods == 'nug exp':
-        C = p[1]
-        cov_model = '%1.12f Nug(0) + %1.12f Exp(%1.12f)'%((1 - C), C, Range)
-        
-    else:
-        raise ValueError
     
-    return cov_model
+    counter = 0
+    cov_model = ''
+    Range = p[counter]
+    counter += 1
+    cov_model += '1.0 %s(%1.12f)'%(covmods, Range)
+
+    if covmods=='Mat':
+        Param = p[counter]
+        counter += 1
+        cov_model += '^%1.12f'%Param    
+    cov_models = cov_model
+
+    return cov_models
 
 
 def Likelihood(p, Ds, us, covmods, talk_to_me=True):
-    cov_models = reconstruct_parameters(p, covmods[0])
+
+        
+    cov_models = reconstruct_parameters(p, covmods)
+        
     Qs = np.array(variogram.Covariogram(Ds, cov_models))
-    
 
     # copula densities
     cs = []

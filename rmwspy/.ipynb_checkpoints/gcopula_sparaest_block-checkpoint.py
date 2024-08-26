@@ -32,12 +32,11 @@ def paraest_multiple_tries(
                 ntries=[6,6],               # [no. of tries with same subsets (diff starting parameters), no. of tries with different subsets]
                 n_in_subset=8,              # number of values in subset
                 neighbourhood='nearest',    # subset search algorithm
-                covmods=['Exp'] ,
+                covmods=['Mat', 'Exp', 'Sph',] ,
                 outputfile=None,            # if valid path+fname string --> write output file
                 talk_to_me=True,
                 maxrange=None,
                 minrange=None,
-                nugget = 0.01
                 ):
 
     if outputfile != None:
@@ -92,7 +91,6 @@ def paraest_multiple_tries(
                         talk_to_me=True,
                         maxrange = maxrange,
                         minrange = minrange,
-                        nugget=nugget,
                         )
                     
                 # only take best of optimizations of same subsets
@@ -137,7 +135,6 @@ def paraest_g(
                 talk_to_me=True,
                 maxrange = None,
                 minrange = None, 
-                nugget=0.01,
                 ):
    
     # BUILD SUBSETS  
@@ -166,7 +163,7 @@ def paraest_g(
     
     args = (d0,                 
             u0,                 
-            nugget,
+            covmods,
             talk_to_me)
     
 
@@ -288,23 +285,22 @@ def reconstruct_parameters(p, covmods):
 
 
 
-def Likelihood_exp_block(p, Ds, us, nugget, talk_to_me=True):
+def Likelihood_exp_block(p, Ds, us, covmods, talk_to_me=True):
     # p - parameter for cov model
     # Ds - [blockblock/withinblock, neighbourhood, link, link, disc, disc]
     # us - values copula space for this neighbourhood 
     # covmods - covmod to try  
     
     # The rank transformation makes the block data have a variance of 1, but
-    # but the block model has a different variance.
+    # but the model has a different variance? 
     lengths_point_l = Ds[0]
     lengths_withinblock_l = Ds[1]
         
     # 1 calculate block block variance
     def type_exp_block(h):
-        C = p[1]*(np.exp(-h/p[0]))
-        C[np.where(h == 0)] += nugget
-        return C
-
+        return p[1]*(np.exp(-h/p[0]))
+    
+    
     # Point variance eq 23, 24
     # this is the average variogram between two blocks
     cov_point = type_exp_block(lengths_point_l).mean(axis=(3, 4))
@@ -315,7 +311,7 @@ def Likelihood_exp_block(p, Ds, us, nugget, talk_to_me=True):
     # Within variance eq 22
     cov_a =  type_exp_block(lengths_withinblock_l).mean(axis = (3, 4))   
     
-    # transpose to get crosscorrelation that can be quickly substracted
+    # transpose to get compute crosscorrelation that can be quickly substracted
     cov_b =  np.transpose(cov_a, axes = (0, 2, 1))
     cov_withinblock = 0.5*(cov_a + cov_b) # eq 22
         

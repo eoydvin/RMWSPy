@@ -463,7 +463,7 @@ def calculate_marginal(prec, cml_prec=None):
     return marginal
 
 def calculate_copula(
-    yx, prec, outputfile=None, covmods='exp', ntries=6, nugget=0.05,  mode = None, maxrange = 100, minrange = 1, p0 = None
+    yx, prec, outputfile=None, covmods=["Mat", "Exp", "Sph"], ntries=6, nugget=0.05, mode = None, maxrange = 100, minrange = 1, p0 = None
 ):
     """
     Wrapper function for copula / spatial dependence calculation
@@ -488,21 +488,21 @@ def calculate_copula(
         n_in_subset = 2
     else:
         n_in_subset = 5
-
-        # calculate copula models
-    if mode == 'block':
+        
+    # calculate copula models
+    if mode is not None:
         cmods = sparaest_block.paraest_multiple_tries(
             np.copy(yx),
             u,
             ntries=[ntries, ntries],
             n_in_subset=n_in_subset,
             # number of values in subsets
-            neighbourhood="random", 
+            neighbourhood="random", # the dereg method is most sensitive to the variance
             # subset search algorithm
+            covmods=covmods,  # covariance functions
             outputfile=outputfile,
             maxrange = maxrange,
             minrange = minrange,
-            nugget = nugget,
         )  # store all fitted models in an output file
 
     else:
@@ -513,9 +513,9 @@ def calculate_copula(
             ntries=[ntries, ntries],
             n_in_subset=n_in_subset,
             # number of values in subsets
-            neighbourhood="nearest",
+            neighbourhood="random",
             # subset search algorithm
-            covmods=[covmods],  # covariance functions
+            covmods=covmods,  # covariance functions
             outputfile=outputfile,
         )  # store all fitted models in an output file
 
@@ -529,19 +529,14 @@ def calculate_copula(
                 #                 cmod = "0.05 Nug(0.0) + 0.95 %s(%1.3f)" % (
                 #                     covmods[model], cmods[model][tries][0][0])
                 
-                if covmods == 'exp':
-                    cmod = "%1.3f Nug(0.0) + %1.3f Exp(%1.3f)" % (
-                        nugget,
-                        1 - nugget,
-                        cmods[model][tries][0][0],
-                    )
-                elif covmods == 'nug exp':
-                    C = cmods[model][tries][0][1]
-                    cmod = "%1.3f Nug(0.0) + %1.3f Exp(%1.3f)" % (
-                        (1 - C),
-                        C,
-                        cmods[model][tries][0][0],
-                    )
+                cmod = "%1.3f Nug(0.0) + %1.3f %s(%1.3f)" % (
+                    nugget,
+                    1 - nugget,
+                    covmods[model],
+                    cmods[model][tries][0][0],
+                )
+                if covmods[model] == "Mat":
+                    cmod += "^%1.3f" % (cmods[model][tries][0][1])
 
     t1_copula = datetime.datetime.now()
     t_copula = t1_copula - t0_copula
@@ -549,6 +544,67 @@ def calculate_copula(
 
     return cmod
 
+
+def calculate_copula_old(
+    yx, prec, outputfile=None, covmods=["Mat", "Exp", "Sph"], ntries=6, nugget=0.05
+):
+    """
+    Wrapper function for copula / spatial dependence calculation
+    """
+
+    print("\nCalculating Copula...")
+    t0_copula = datetime.datetime.now()
+    mem0_copula = psutil.Process(os.getpid()).memory_info().rss
+
+    # transform to rank values
+    u = (st.rankdata(prec) - 0.5) / prec.shape[0]
+
+    # set subset size
+    if len(prec[prec > 0]) < 5:
+        n_in_subset = 2
+    else:
+        n_in_subset = 5
+
+    # calculate copula models
+    cmods = sparest.paraest_multiple_tries(
+        np.copy(yx),
+        u,
+        ntries=[ntries, ntries],
+        n_in_subset=n_in_subset,
+        # number of values in subsets
+        neighbourhood="random",
+        # subset search algorithm
+        covmods=covmods,  # covariance functions
+        outputfile=outputfile,
+    )  # store all fitted models in an output file
+
+    # take the copula model with the highest likelihood
+    # reconstruct from parameter array
+    likelihood = -666
+    for model in range(len(cmods)):
+        for tries in range(ntries):
+            if cmods[model][tries][1] * -1.0 > likelihood:
+                likelihood = cmods[model][tries][1] * -1.0
+                #                 cmod = "0.05 Nug(0.0) + 0.95 %s(%1.3f)" % (
+                #                     covmods[model], cmods[model][tries][0][0])
+                cmod = "%1.3f Nug(0.0) + %1.3f %s(%1.3f)" % (
+                    nugget,
+                    1 - nugget,
+                    covmods[model],
+                    cmods[model][tries][0][0],
+                )
+                if covmods[model] == "Mat":
+                    cmod += "^%1.3f" % (cmods[model][tries][0][1])
+
+    print(cmod)
+
+    t1_copula = datetime.datetime.now()
+    t_copula = t1_copula - t0_copula
+    t_copula = t_copula.total_seconds()
+    mem_copula = psutil.Process(os.getpid()).memory_info().rss - mem0_copula
+    print("...done in ", t_copula, "\n")
+
+    return cmod, t_copula, mem_copula
 
 
 def get_linear_constraints(yx, prec, marginal):
