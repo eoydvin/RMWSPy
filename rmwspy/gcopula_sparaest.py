@@ -27,6 +27,8 @@ def paraest_multiple_tries(
                 covmods=['exp'],
                 outputfile=None,            # if valid path+fname string --> write output file
                 talk_to_me=True,
+                maxrange = None,
+                minrange = None,
                 ):
 
     if outputfile != None:
@@ -80,6 +82,8 @@ def paraest_multiple_tries(
                         covmods = covmods0,
                         outputfile=None,
                         talk_to_me=True,
+                        maxrange = maxrange,
+                        minrange = minrange,
                         )
 
                 # only take best of optimizations of same subsets
@@ -122,6 +126,8 @@ def paraest_g(
                 covmods = ['exp'],    
                 outputfile=None,            
                 talk_to_me=True,
+                maxrange = None,
+                minrange = None, 
                 ):
    
     # BUILD SUBSETS  
@@ -149,9 +155,9 @@ def paraest_g(
 
 
     p_bounds=[]   
-    Rangebounds = [[(d0[np.where(d0>0)]).min()*2.,  d0.max()*2]]
+    Rangebounds = [[minrange,  maxrange]] #     Rangebounds = [[(d0[np.where(d0>0)]).min()*2.,  d0.max()*2]]
     p_bounds += Rangebounds
-    c_bounds = [[0, 1]]
+    c_bounds = [[0, 1]] # scaled to be in 0, 1
     p_bounds += c_bounds
     
     p_bounds = tuple(p_bounds)
@@ -167,7 +173,7 @@ def paraest_g(
             u0,                 
             [covmods],
             talk_to_me)
-        
+
     # start optimization
     out = opt.fmin_l_bfgs_b(Likelihood,
                            p_start,

@@ -513,8 +513,10 @@ def calculate_copula(
             ntries=[ntries, ntries],
             n_in_subset=n_in_subset,
             # number of values in subsets
-            neighbourhood="nearest",
+            neighbourhood="random",
             # subset search algorithm
+            maxrange = maxrange,
+            minrange = minrange,        
             covmods=[covmods],  # covariance functions
             outputfile=outputfile,
         )  # store all fitted models in an output file
